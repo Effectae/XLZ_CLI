@@ -1,0 +1,12 @@
+Language: Cpp
+BasedOnStyle: Google
+ColumnLimit: 100
+IndentWidth: 2
+UseTab: Never
+BreakBeforeBraces: Attach
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Inline
+PointerAlignment: Left
+AlignTrailingComments: true
+MaxEmptyLinesToKeep: 1

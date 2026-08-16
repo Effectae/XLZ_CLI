@@ -1,0 +1,25 @@
+Checks: >
+  bugprone-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-function-cognitive-complexity,
+  -readability-braces-around-statements,
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*'
+FormatStyle: file
+CheckOptions:
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.PublicMemberCase
+    value: lower_case
+  - key: modernize-use-nullptr.NullMacros
+    value: 'NULL'
