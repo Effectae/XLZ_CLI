@@ -1,9 +1,11 @@
 #pragma once
+
 #include <array>
 #include <charconv>
 #include <concepts>
 #include <cstddef>
 #include <format>
+#include <span>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -51,7 +53,7 @@ constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter
 template <typename T>
   requires std::is_same_v<T, std::optional<typename T::value_type>>
 constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
-  return converter<T::value_type>(
+  return converter<typename T::value_type>(
       arg, static_cast<Converter::ValPtr>(&((*static_cast<T*>(val)).emplace())));
 }
 
@@ -67,14 +69,15 @@ constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter
 template <typename T>
   requires std::is_same_v<T, std::vector<typename T::value_type>>
 constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
-  return converter<T::value_type>()(
+  return converter<typename T::value_type>()(
       arg, static_cast<Converter::ValPtr>(&((*static_cast<T*>(val)).emplace_back())));
 }
 // vector<INTEGRAL,base>
 template <typename T, int base>
-  requires std::is_same_v<T, std::vector<typename T::value_type>>
+  requires std::is_same_v<T, std::vector<typename T::value_type>> &&
+           requires { typename T::value_type; }
 constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
-  return converter<T::value_type, base>()(
+  return converter<typename T::value_type, base>()(
       arg, static_cast<Converter::ValPtr>(&((*static_cast<T*>(val)).emplace_back())));
 }
 
@@ -103,6 +106,11 @@ struct GenOpt {
   static constexpr std::string_view name{Name};
   static constexpr XLZ_CLI::Core::Parse::OptNeeds needs{Needs};
   Vt value;
+
+  constexpr explicit operator Vt&() { return value; };
+  constexpr explicit operator Vt const&() const { return value; };
+  constexpr auto get() const -> Vt const& { return value; };
+  constexpr auto get() -> Vt& { return value; };
 
   constexpr GenOpt() : value{} {}
 
@@ -159,6 +167,25 @@ struct OptSet : opts... {
           valptrs[idx] = static_cast<Converter::ValPtr>(&static_cast<opts*>(this)->value);
         }(),
         ...);
+  }
+
+  template <Option Opt>
+  constexpr auto get() -> Opt& {
+    return *static_cast<Opt*>(this);
+  };
+  template <Option Opt>
+  constexpr auto get() const -> Opt const& {
+    return *static_cast<Opt const*>(this);
+  };
+
+  template <auto const& StaticOptionMatcher>
+  auto parse(auto args_begin, auto args_end)
+      -> std::pair<decltype(args_begin), XLZ_CLI::Core::Parse::Result> {
+    std::array<Converter::ValPtr, sum> vals;
+    bind<StaticOptionMatcher>(vals);
+    std::span<Converter::ValPtr> vals_span{vals};
+    return XLZ_CLI::Core::Parse::parse(args_begin, args_end, StaticOptionMatcher.make_base(),
+                                       vals_span);
   }
 };
 

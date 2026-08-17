@@ -4,7 +4,8 @@
 
 namespace XLZ_CLI::Core::Parse {
 template <OptionMatcher Matcher, ValPtrsViewer ValPtrs>
-constexpr auto parse(auto args_begin, auto args_end, Matcher const& option_matcher, ValPtrs valptrs)
+[[gnu::noinline]] constexpr auto parse(auto args_begin, auto args_end,
+                                       Matcher const& option_matcher, ValPtrs valptrs)
     -> std::pair<decltype(args_begin), Result> {
   using State = Result::State;
 

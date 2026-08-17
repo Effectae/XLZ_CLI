@@ -22,14 +22,17 @@ See [example.cpp](tests/example.cpp).
 
 ```sh
 $ meson setup build -Dtests=true && meson compile -C build
-$ ./build/tests/example --help --Num 10 -- extra_1 extra_b
-Print the list of help:
-[0]:Num
-[1]:help
-The state of parse:Num 10
-Extra arguments:
-extra_1
-extra_b
+$ ./build/tests/example --do-list --num 10 --arg 'This is a argument' --float -inf
+Print the list of options:
+[0]:arg
+[1]:do-list
+[2]:float
+[3]:num
+The end of list.
+The state of parse:Success
+Arg:This is a argument
+Float:-inf
+Num:10
 ```
 
 ## Defining Options
