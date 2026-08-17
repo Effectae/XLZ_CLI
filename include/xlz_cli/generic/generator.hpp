@@ -1,9 +1,11 @@
 #pragma once
+
 #include <array>
 #include <charconv>
 #include <concepts>
 #include <cstddef>
 #include <format>
+#include <span>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -51,7 +53,7 @@ constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter
 template <typename T>
   requires std::is_same_v<T, std::optional<typename T::value_type>>
 constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
-  return converter<T::value_type>(
+  return converter<typename T::value_type>(
       arg, static_cast<Converter::ValPtr>(&((*static_cast<T*>(val)).emplace())));
 }
 
@@ -67,14 +69,15 @@ constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter
 template <typename T>
   requires std::is_same_v<T, std::vector<typename T::value_type>>
 constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
-  return converter<T::value_type>()(
+  return converter<typename T::value_type>()(
       arg, static_cast<Converter::ValPtr>(&((*static_cast<T*>(val)).emplace_back())));
 }
 // vector<INTEGRAL,base>
 template <typename T, int base>
-  requires std::is_same_v<T, std::vector<typename T::value_type>>
+  requires std::is_same_v<T, std::vector<typename T::value_type>> &&
+           requires { typename T::value_type; }
 constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
-  return converter<T::value_type, base>()(
+  return converter<typename T::value_type, base>()(
       arg, static_cast<Converter::ValPtr>(&((*static_cast<T*>(val)).emplace_back())));
 }
 
@@ -102,11 +105,23 @@ struct GenOpt {
   static constexpr Converter func{F};
   static constexpr std::string_view name{Name};
   static constexpr XLZ_CLI::Core::Parse::OptNeeds needs{Needs};
+  [[no_unique_address]]
   Vt value;
+
+  constexpr explicit operator Vt&() { return value; };
+  constexpr explicit operator Vt const&() const { return value; };
+  [[nodiscard]]
+  constexpr auto get() const -> Vt const& {
+    return value;
+  };
+  [[nodiscard]]
+  constexpr auto get() -> Vt& {
+    return value;
+  };
 
   constexpr GenOpt() : value{} {}
 
-  constexpr GenOpt(auto val) : value{val} {}
+  constexpr GenOpt(Vt val) : value{val} {}
 };
 
 template <class T>
@@ -135,18 +150,17 @@ struct OptSet : opts... {
 
   constexpr OptSet(opts::value_type... def_vals) : opts{def_vals}... {}
 
+  using StaticMatcher =
+      XLZ_CLI::Core::Meta::StaticOptionMatcher<sum, 0, 1, 2, std::string_view, Converter,
+                                               XLZ_CLI::Core::Parse::OptNeeds>;
   [[nodiscard]]
-  constexpr auto gen_static_matcher() const
-      -> XLZ_CLI::Core::Meta::StaticOptionMatcher<sum, 0, 1, 2, std::string_view, Converter,
-                                                  XLZ_CLI::Core::Parse::OptNeeds> {
-    return XLZ_CLI::Core::Meta::StaticOptionMatcher<sum, 0, 1, 2, std::string_view, Converter,
-                                                    XLZ_CLI::Core::Parse::OptNeeds>::
-        make_matcher(
-            sorted_opts,
-            [](Opt const& a) constexpr
-                -> std::tuple<std::string_view, Converter, XLZ_CLI::Core::Parse::OptNeeds> {
-              return {a.name, a.func, a.needs};
-            });
+  constexpr auto gen_static_matcher() const -> StaticMatcher {
+    return StaticMatcher::make_matcher(
+        sorted_opts,
+        [](Opt const& a) constexpr
+            -> std::tuple<std::string_view, Converter, XLZ_CLI::Core::Parse::OptNeeds> {
+          return {a.name, a.func, a.needs};
+        });
   }
 
   template <auto const& StaticOptionMatcher>
@@ -156,9 +170,30 @@ struct OptSet : opts... {
           constexpr auto idx = StaticOptionMatcher.find(opts::name);
           static_assert(idx != ~std::size_t{0},
                         "One or more option names not found in static matcher");
-          valptrs[idx] = static_cast<Converter::ValPtr>(&static_cast<opts*>(this)->value);
+          valptrs[idx] = reinterpret_cast<Converter::ValPtr>(&static_cast<opts*>(this)->get());
         }(),
         ...);
+  }
+
+  template <Option Opt>
+  [[nodiscard]]
+  constexpr auto get() -> Opt& {
+    return *this;
+  };
+  template <Option Opt>
+  [[nodiscard]]
+  constexpr auto get() const -> Opt const& {
+    return *this;
+  };
+
+  template <auto const& StaticOptionMatcher>
+  auto parse(auto args_begin, auto args_end)
+      -> std::pair<decltype(args_begin), XLZ_CLI::Core::Parse::Result> {
+    std::array<Converter::ValPtr, sum> vals;
+    bind<StaticOptionMatcher>(vals);
+    std::span<Converter::ValPtr> vals_span{vals};
+    static constexpr auto matcher = StaticOptionMatcher.make_base();
+    return XLZ_CLI::Core::Parse::parse(args_begin, args_end, matcher, vals_span);
   }
 };
 
