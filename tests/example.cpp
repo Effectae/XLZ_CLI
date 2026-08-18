@@ -59,7 +59,7 @@ auto main(int argc, char const* const* argv) -> int {
                         },
                         [&](Result::UnknownOption const& e) -> void {
                           auto opt = e.option;
-                          opt = opt.substr(2);
+                          opt.remove_prefix(2);
                           if (opt.empty())
                               // Support '--'
                               [[likely]] {

@@ -36,15 +36,15 @@ auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
   else if (arg[0] == '0')
     switch (arg[1]) {
       case 'b':
-        arg = arg.substr(2);
+        arg.remove_prefix(2);
         base = 0b10;
         break;
       case 'o':
-        arg = arg.substr(2);
+        arg.remove_prefix(2);
         base = 0o10;
         break;
       case 'x':
-        arg = arg.substr(2);
+        arg.remove_prefix(2);
         base = 0x10;
         break;
       default:

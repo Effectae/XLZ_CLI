@@ -87,7 +87,7 @@ struct OptionMatcher {
   constexpr auto find(std::string_view opt) const -> std::optional<std::size_t> {
     auto b{opt_names.begin()};
     auto e{opt_names.end()};
-    opt = opt.substr(2);
+    opt.remove_prefix(2);
     auto it = std::lower_bound(b, e, opt);
     if (it == e || *it != opt) return std::nullopt;
     return std::distance(b, it);
