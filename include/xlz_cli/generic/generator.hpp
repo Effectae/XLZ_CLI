@@ -27,24 +27,62 @@ constexpr auto converter<std::string_view>(Converter::Arg arg, Converter::ValPtr
   return {};
 }
 
-template <std::integral N, int base>
-constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
+template <std::integral N>
+auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
   N* n = static_cast<N*>(val);
-  auto [p, ec] = std::from_chars(arg.data(), arg.data() + arg.size(), *n, base);
+  int base = 10;
+  if (arg.size() < 2)
+    base = 10;
+  else if (arg[0] == '0')
+    switch (arg[1]) {
+      case 'b':
+        arg = arg.substr(2);
+        base = 0b10;
+        break;
+      case 'o':
+        arg = arg.substr(2);
+        base = 0o10;
+        break;
+      case 'x':
+        arg = arg.substr(2);
+        base = 0x10;
+        break;
+      default:
+        return std::unexpected{
+            std::format("Failed : It is unknown format \"{}\"", arg.substr(0, 2))};
+    };
+  auto const* arg_start = arg.data();
+  auto const* arg_end = arg_start + arg.size();
+  auto [p, ec] = std::from_chars(arg_start, arg_end, *n, base);
   if (ec != decltype(ec){}) [[unlikely]]
     return std::unexpected{std::make_error_code(ec).message()};
-  if (*p) [[unlikely]]
+  if (p != arg_end) [[unlikely]]
+    return std::unexpected{std::format("Failed : It has extra chars \"{}\"", p)};
+  return {};
+};
+
+template <std::integral N, int base>
+auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
+  N* n = static_cast<N*>(val);
+  auto const* arg_start = arg.data();
+  auto const* arg_end = arg_start + arg.size();
+  auto [p, ec] = std::from_chars(arg_start, arg_end, *n, base);
+  if (ec != decltype(ec){}) [[unlikely]]
+    return std::unexpected{std::make_error_code(ec).message()};
+  if (p != arg_end) [[unlikely]]
     return std::unexpected{std::format("Failed : It has extra chars \"{}\"", p)};
   return {};
 };
 
 template <std::floating_point N>
-constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
+auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
   N* n = static_cast<N*>(val);
-  auto [p, ec] = std::from_chars(arg.data(), arg.data() + arg.size(), *n);
+  auto const* arg_start = arg.data();
+  auto const* arg_end = arg_start + arg.size();
+  auto [p, ec] = std::from_chars(arg.data(), arg_end, *n);
   if (ec != decltype(ec){}) [[unlikely]]
     return std::unexpected{std::make_error_code(ec).message()};
-  if (*p) [[unlikely]]
+  if (p != arg_end) [[unlikely]]
     return std::unexpected{std::format("Failed : It has extra chars \"{}\"", p)};
   return {};
 };

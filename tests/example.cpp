@@ -18,8 +18,7 @@ auto list_the_options() -> void;
 
 using ArgOpt = Generic::GenOpt<"arg", std::optional<std::string_view>, Needs::Once>;
 using FloatOpt = Generic::GenOpt<"float", std::optional<double>, Needs::Once>;
-using NumOpt =
-    Generic::GenOpt<"num", std::size_t, Needs::Once, Generic::converter<std::size_t, 10>>;
+using NumOpt = Generic::GenOpt<"num", std::size_t, Needs::Once, Generic::converter<std::size_t>>;
 
 constexpr auto options =
     Generic::OptSet<ArgOpt, FloatOpt, NumOpt,
