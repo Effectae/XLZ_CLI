@@ -163,11 +163,11 @@ struct GenOpt {
 };
 
 template <class T>
-concept Option = requires(T t) {
+concept Option = requires {
   typename T::value_type;
-  { t.func } -> std::convertible_to<Converter>;
-  { t.name } -> std::convertible_to<std::string_view>;
-  { t.needs } -> std::convertible_to<XLZ_CLI::Core::Parse::OptNeeds>;
+  { T::func } -> std::convertible_to<Converter>;
+  { T::name } -> std::convertible_to<std::string_view>;
+  { T::needs } -> std::convertible_to<XLZ_CLI::Core::Parse::OptNeeds>;
 };
 
 template <Option... opts>
