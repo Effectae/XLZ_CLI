@@ -27,7 +27,7 @@ struct StaticOptionMatcher {
 
   template <std::size_t N>
   [[nodiscard]]
-  constexpr auto get_arrays() const -> std::array<decltype(std::get<N>(inner)[0]), sum> const& {
+  constexpr auto get_arrays() const -> decltype(std::get<N>(inner)) const& {
     return std::get<N>(inner);
   }
 

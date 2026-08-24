@@ -24,15 +24,15 @@ See [example.cpp](tests/example.cpp).
 $ meson setup build -Dtests=true && meson compile -C build
 $ ./build/tests/example --do-list --num 10 --arg 'This is a argument' --float -inf
 Print the list of options:
-[0]:arg
-[1]:do-list
-[2]:float
-[3]:num
+        arg        Print if give a argument
+        do-list    List the options
+        float      Print if give a float
+        num        Print if give a num
 The end of list.
 The state of parse:Success
 Arg:This is a argument
 Float:-inf
-Num:10
+Num:16
 ```
 
 ## Defining Options

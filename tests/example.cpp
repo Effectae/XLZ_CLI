@@ -1,40 +1,52 @@
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <limits>
 #include <optional>
 #include <print>
 #include <ranges>
 #include <string_view>
+#include <variant>
 #include <xlz_cli/args.hpp>
 #include <xlz_cli/core/parse_impl.hpp>
 #include <xlz_cli/generic/generator.hpp>
 
 using namespace XLZ_CLI;
 
-using Needs = XLZ_CLI::Core::Parse::OptNeeds;
+using Needs = Generic::Needs;
 using Convter = Generic::Converter;
 
-auto list_the_options() -> void;
+namespace Cli {
+auto list_options() -> void;
 
-using ArgOpt = Generic::GenOpt<"arg", std::optional<std::string_view>, Needs::Once>;
-using FloatOpt = Generic::GenOpt<"float", std::optional<double>, Needs::Once>;
-using NumOpt = Generic::GenOpt<"num", std::size_t, Needs::Once, Generic::converter<std::size_t>>;
-
-constexpr auto options =
+using ArgOpt = Generic::GenOpt<"arg", "Print if give a argument", std::optional<std::string_view>,
+                               Needs::Once>;
+using FloatOpt =
+    Generic::GenOpt<"float", "Print if give a float", std::optional<double>, Needs::Once>;
+using NumOpt = Generic::GenOpt<"num", "Print if give a num", std::size_t, Needs::Once,
+                               Generic::converter<std::size_t>>;
+using OptSet =
     Generic::OptSet<ArgOpt, FloatOpt, NumOpt,
-                    Generic::GenOpt<"do-list", std::monostate, Needs::None,
+                    Generic::GenOpt<"do-list", "List the options", std::monostate, Needs::None,
                                     [](Convter::Arg arg, Convter::ValPtr val) -> Convter::Report {
                                       std::println("Print the list of options:");
-                                      list_the_options();
+                                      list_options();
                                       std::println("The end of list.");
                                       return {};
-                                    }>>{
-        {}, {}, std::numeric_limits<std::size_t>::max(), std::monostate{}};  // Set default value
+                                    }>>;
 
-auto list_the_options() -> void {
-  for (auto const [index, option] : decltype(options)::sorted_opts | std::views::enumerate)
-    std::println("[{}]:{}", index, option.name);
+constexpr static auto matcher = OptSet::gen_static_matcher();
+constexpr static OptSet default_cli{{}, {}, std::numeric_limits<std::size_t>::max(), {}};
+
+auto list_options() -> void {
+  constexpr auto size = OptSet::sum;
+
+  const auto& names = matcher.names();
+  const auto& descs = matcher.get_arrays<3>();
+
+  for (std::size_t i{}; i < size; i++) std::println("\t{:<10} {}", names[i], descs[i]);
 }
+};  // namespace Cli
 
 template <class... Ts>
 struct Overloaded : Ts... {
@@ -46,9 +58,8 @@ Overloaded(Ts...) -> Overloaded<Ts...>;
 auto main(int argc, char const* const* argv) -> int {
   Args<> args{argc, argv};
 
-  constexpr static auto matcher = options.gen_static_matcher();
-  auto cli = options;  // Copy from the default value done on compile-time
-  auto [it, result] = cli.parse<matcher>(++args.begin(), args.end());
+  auto cli = Cli::default_cli;  // Copy from the default value done on compile-time
+  auto [it, result] = cli.parse<Cli::matcher>(++args.begin(), args.end());
 
   using Result = decltype(result);
 
@@ -77,11 +88,11 @@ auto main(int argc, char const* const* argv) -> int {
                         }},
              result.state);
 
-  auto const& arg = cli.get<ArgOpt>().get();
+  auto const& arg = cli.get<Cli::ArgOpt>().get();
   if (arg) std::println("Arg:{}", *arg);
-  auto const& float_pointer = cli.get<FloatOpt>().get();
+  auto const& float_pointer = cli.get<Cli::FloatOpt>().get();
   if (float_pointer) std::println("Float:{}", *float_pointer);
-  auto const& num = cli.get<NumOpt>().get();
+  auto const& num = cli.get<Cli::NumOpt>().get();
   if (num != ~std::size_t{0}) std::println("Num:{}", num);
 
   if (it != args.end()) {

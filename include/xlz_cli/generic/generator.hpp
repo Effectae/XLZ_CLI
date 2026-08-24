@@ -16,6 +16,9 @@
 
 namespace XLZ_CLI::Generic {
 using Converter = XLZ_CLI::Core::Parse::Converter;
+using Needs = XLZ_CLI::Core::Parse::OptNeeds;
+template <class Opt, std::size_t N>
+using SortedOpts = XLZ_CLI::Core::Meta::SortedOpts<Opt, N>;
 
 template <typename T>
 constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report;
@@ -136,13 +139,13 @@ struct FixedString {
   constexpr operator std::string_view() const { return {storage.data(), storage.size() - 1}; }
 };
 
-template <FixedString Name, class Vt, XLZ_CLI::Core::Parse::OptNeeds Needs,
-          Converter F = converter<Vt>>
+template <FixedString Name, FixedString Desc, class Vt, Needs N, Converter F = converter<Vt>>
 struct GenOpt {
   using value_type = Vt;
-  static constexpr Converter func{F};
   static constexpr std::string_view name{Name};
-  static constexpr XLZ_CLI::Core::Parse::OptNeeds needs{Needs};
+  static constexpr std::string_view desc{Desc};
+  static constexpr Converter func{F};
+  static constexpr Needs needs{N};
   [[no_unique_address]]
   Vt value;
 
@@ -165,39 +168,46 @@ struct GenOpt {
 template <class T>
 concept Option = requires {
   typename T::value_type;
-  { T::func } -> std::convertible_to<Converter>;
   { T::name } -> std::convertible_to<std::string_view>;
-  { T::needs } -> std::convertible_to<XLZ_CLI::Core::Parse::OptNeeds>;
+  { T::desc } -> std::convertible_to<std::string_view>;
+  { T::func } -> std::convertible_to<Converter>;
+  { T::needs } -> std::convertible_to<Needs>;
 };
 
 template <Option... opts>
 struct OptSet : opts... {
   struct Opt {
+    std::string_view name, desc;
     Converter func;
-    std::string_view name;
-    XLZ_CLI::Core::Parse::OptNeeds needs;
+    Needs needs;
   };
   static constexpr auto sum = sizeof...(opts);
-  static constexpr XLZ_CLI::Core::Meta::SortedOpts<Opt, sum> sorted_opts{
-      []() constexpr -> std::array<Opt, sum> {
-        return {Opt{.func{opts::func}, .name{opts::name}, .needs = opts::needs}...};
-      }(),
-      [](Opt const& a, Opt const& b) constexpr -> bool { return a.name < b.name; }};
+
+  static constexpr auto make_sorted_opts() -> SortedOpts<Opt, sum> {
+    return {
+        []() constexpr -> std::array<Opt, sum> {
+          return {Opt{
+              .name{opts::name}, .desc{opts::desc}, .func{opts::func}, .needs = opts::needs}...};
+        }(),
+        [](Opt const& a, Opt const& b) constexpr -> bool { return a.name < b.name; }};
+  }
 
   constexpr OptSet() = default;
 
   constexpr OptSet(opts::value_type... def_vals) : opts{def_vals}... {}
 
   using StaticMatcher =
-      XLZ_CLI::Core::Meta::StaticOptionMatcher<sum, 0, 1, 2, std::string_view, Converter,
-                                               XLZ_CLI::Core::Parse::OptNeeds>;
+      XLZ_CLI::Core::Meta::StaticOptionMatcher<sum, 0, 1, 2, std::string_view, Converter, Needs,
+                                               std::string_view>;
+
   [[nodiscard]]
-  constexpr auto gen_static_matcher() const -> StaticMatcher {
+  static constexpr auto gen_static_matcher(
+      SortedOpts<Opt, sum> sorted_opts = OptSet::make_sorted_opts()) -> StaticMatcher {
     return StaticMatcher::make_matcher(
         sorted_opts,
         [](Opt const& a) constexpr
-            -> std::tuple<std::string_view, Converter, XLZ_CLI::Core::Parse::OptNeeds> {
-          return {a.name, a.func, a.needs};
+            -> std::tuple<std::string_view, Converter, Needs, std::string_view> {
+          return {a.name, a.func, a.needs, a.desc};
         });
   }
 
