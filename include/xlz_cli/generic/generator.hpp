@@ -123,7 +123,9 @@ constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter
 }
 
 struct Flag {
-  bool inner{};
+  bool inner;
+
+  constexpr operator bool() const { return inner; }
 };
 
 template <>

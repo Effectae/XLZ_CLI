@@ -25,8 +25,9 @@ using FloatOpt =
     Generic::GenOpt<"float", "Print if give a float", std::optional<double>, Needs::Once>;
 using NumOpt = Generic::GenOpt<"num", "Print if give a num", std::size_t, Needs::Once,
                                Generic::converter<std::size_t>>;
+using FlagOpt = Generic::GenOpt<"flag", "Print true if used flag", Generic::Flag, Needs::None>;
 using OptSet =
-    Generic::OptSet<ArgOpt, FloatOpt, NumOpt,
+    Generic::OptSet<ArgOpt, FloatOpt, NumOpt, FlagOpt,
                     Generic::GenOpt<"do-list", "List the options", std::monostate, Needs::None,
                                     [](Convter::Arg arg, Convter::ValPtr val) -> Convter::Report {
                                       std::println("Print the list of options:");
@@ -36,7 +37,7 @@ using OptSet =
                                     }>>;
 
 constexpr static auto matcher = OptSet::gen_static_matcher();
-constexpr static OptSet default_cli{{}, {}, std::numeric_limits<std::size_t>::max(), {}};
+constexpr static OptSet default_cli{{}, {}, std::numeric_limits<std::size_t>::max(), {}, {}};
 
 auto list_options() -> void {
   constexpr auto size = OptSet::sum;
@@ -94,6 +95,8 @@ auto main(int argc, char const* const* argv) -> int {
   if (float_pointer) std::println("Float:{}", *float_pointer);
   auto const& num = cli.get<Cli::NumOpt>().get();
   if (num != ~std::size_t{0}) std::println("Num:{}", num);
+  auto const& flag = cli.get<Cli::FlagOpt>().get();
+  std::println("flag : {}", flag ? "enabled" : "disabled");
 
   if (it != args.end()) {
     std::println("Extra arguments:");

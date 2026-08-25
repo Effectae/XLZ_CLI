@@ -22,10 +22,11 @@ See [example.cpp](tests/example.cpp).
 
 ```sh
 $ meson setup build -Dtests=true && meson compile -C build
-$ ./build/tests/example --do-list --num 10 --arg 'This is a argument' --float -inf
+$ ./build/tests/example --do-list --num 0x10 --arg 'This is a argument' --float -inf --flag
 Print the list of options:
         arg        Print if give a argument
         do-list    List the options
+        flag       Print true if used flag
         float      Print if give a float
         num        Print if give a num
 The end of list.
@@ -33,12 +34,13 @@ The state of parse:Success
 Arg:This is a argument
 Float:-inf
 Num:16
+flag : enabled
 ```
 
 ## Defining Options
 
 ```cpp
-using MyOpt = Generic::GenOpt<"name",ValueType,OptNeeds,Converter>;
+using MyOpt = Generic::GenOpt<"name","This is description.",ValueType,OptNeeds,Converter>;
 ```
 
 - `OptNeeds`:`None`(no argument), `Once`(exactly one), `Multi`(zero or more).
