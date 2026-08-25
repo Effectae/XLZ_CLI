@@ -5,6 +5,8 @@
 namespace XLZ_CLI {
 template <typename ArgStr = char const* const>
 struct Args : std::span<ArgStr> {
+  using std::span<ArgStr>::span;
+
   constexpr Args(int argc, ArgStr const* argv)
       : std::span<ArgStr>{argv, static_cast<std::size_t>(argc)} {}
 };
