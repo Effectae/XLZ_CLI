@@ -14,9 +14,9 @@ template <class Opt, std::size_t N>
 struct SortedOpts : std::array<Opt, N> {
   template <class C>
   constexpr SortedOpts(std::array<Opt, N> arr, C&& cmp)
-      : std::array<Opt, N>{[&]() constexpr -> std::array<Opt, N> {
+      : std::array<Opt, N>{[&] constexpr -> std::array<Opt, N> {
           return (std::sort(arr.begin(), arr.end(), std::forward<C>(cmp)), arr);
-        }()} {}
+        }(),} {}
 };
 
 template <std::size_t Sum, std::size_t NameIdx, std::size_t ConverterIdx, std::size_t NeedsIdx,
@@ -77,7 +77,7 @@ struct StaticOptionMatcher {
   constexpr auto make_base() const -> XLZ_CLI::Core::Parse::Base::OptionMatcher {
     XLZ_CLI::Core::Parse::Base::OptionMatcher ret{.opt_names = std::get<NameIdx>(inner),
                                                   .converters = std::get<ConverterIdx>(inner),
-                                                  .needs_arr = std::get<NeedsIdx>(inner)};
+                                                  .needs_arr = std::get<NeedsIdx>(inner),};
     return ret;
   }
 };

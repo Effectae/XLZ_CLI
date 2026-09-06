@@ -54,8 +54,9 @@ template <OptionMatcher Matcher, ValPtrsViewer ValPtrs>
         default:
           std::unreachable();
       }
-    } else [[unlikely]]
+    } else [[unlikely]] {
       return {i, State{Result::UnknownOption{str_sv}}};
+}
     ++i;
   }
 _end:

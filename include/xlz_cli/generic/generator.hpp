@@ -15,7 +15,7 @@
 #include "../core/parse.hpp"
 
 namespace XLZ_CLI::Generic {
-using Converter = XLZ_CLI::Core::Parse::Converter;
+using XLZ_CLI::Core::Parse::Converter;
 using Needs = XLZ_CLI::Core::Parse::OptNeeds;
 template <class Opt, std::size_t N>
 using SortedOpts = XLZ_CLI::Core::Meta::SortedOpts<Opt, N>;
@@ -82,7 +82,7 @@ auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
   N* n = static_cast<N*>(val);
   auto const* arg_start = arg.data();
   auto const* arg_end = arg_start + arg.size();
-  auto [p, ec] = std::from_chars(arg.data(), arg_end, *n);
+  auto [p, ec] = std::from_chars(arg_start, arg_end, *n);
   if (ec != decltype(ec){}) [[unlikely]]
     return std::unexpected{std::make_error_code(ec).message()};
   if (p != arg_end) [[unlikely]]
@@ -95,7 +95,7 @@ template <typename T>
   requires std::is_same_v<T, std::optional<typename T::value_type>>
 constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
   return converter<typename T::value_type>(
-      arg, static_cast<Converter::ValPtr>(&((*static_cast<T*>(val)).emplace())));
+      arg, static_cast<Converter::ValPtr>(&(*static_cast<T*>(val)).emplace()));
 }
 
 // optional<INTEGRAL,base>
@@ -104,14 +104,14 @@ template <typename T, int base>
            std::is_integral_v<typename T::value_type>
 constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
   return converter<typename T::value_type, base>()(
-      arg, static_cast<Converter::ValPtr>(&((*static_cast<T*>(val)).emplace())));
+      arg, static_cast<Converter::ValPtr>(&(*static_cast<T*>(val)).emplace()));
 }
 // vector<T>
 template <typename T>
   requires std::is_same_v<T, std::vector<typename T::value_type>>
 constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
   return converter<typename T::value_type>()(
-      arg, static_cast<Converter::ValPtr>(&((*static_cast<T*>(val)).emplace_back())));
+      arg, static_cast<Converter::ValPtr>(&(*static_cast<T*>(val)).emplace_back()));
 }
 // vector<INTEGRAL,base>
 template <typename T, int base>
@@ -119,7 +119,7 @@ template <typename T, int base>
            requires { typename T::value_type; }
 constexpr auto converter(Converter::Arg arg, Converter::ValPtr val) -> Converter::Report {
   return converter<typename T::value_type, base>()(
-      arg, static_cast<Converter::ValPtr>(&((*static_cast<T*>(val)).emplace_back())));
+      arg, static_cast<Converter::ValPtr>(&(*static_cast<T*>(val)).emplace_back()));
 }
 
 struct Flag {
@@ -187,11 +187,16 @@ struct OptSet : opts... {
 
   static constexpr auto make_sorted_opts() -> SortedOpts<Opt, sum> {
     return {
-        []() constexpr -> std::array<Opt, sum> {
+        [] constexpr -> std::array<Opt, sum> {
           return {Opt{
-              .name{opts::name}, .desc{opts::desc}, .func{opts::func}, .needs = opts::needs}...};
+              .name{opts::name},
+              .desc{opts::desc},
+              .func{opts::func},
+              .needs = opts::needs,
+          }...};
         }(),
-        [](Opt const& a, Opt const& b) constexpr -> bool { return a.name < b.name; }};
+        [](Opt const& a, Opt const& b) constexpr -> bool { return a.name < b.name; },
+    };
   }
 
   constexpr OptSet() = default;
@@ -216,7 +221,7 @@ struct OptSet : opts... {
   template <auto const& StaticOptionMatcher>
   constexpr auto bind(XLZ_CLI::Core::Parse::ValPtrsViewer auto& valptrs) -> void {
     (
-        [&]() constexpr -> void {
+        [&] constexpr -> void {
           constexpr auto idx = StaticOptionMatcher.find(opts::name);
           static_assert(idx != ~std::size_t{0},
                         "One or more option names not found in static matcher");

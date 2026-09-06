@@ -13,7 +13,7 @@
 
 using namespace XLZ_CLI;
 
-using Needs = Generic::Needs;
+using Generic::Needs;
 using Convter = Generic::Converter;
 
 namespace Cli {
@@ -86,7 +86,7 @@ auto main(int argc, char const* const* argv) -> int {
                         },
                         [](Result::MissingArguments const& e) -> void {
                           std::println("Missing arguments in {}", e.option);
-                        }},
+                        },},
              result.state);
 
   auto const& arg = cli.get<Cli::ArgOpt>().get();
